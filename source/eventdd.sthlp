@@ -33,6 +33,8 @@ numeric)
 {p_end}
 {synopt:{opt baseline(#)}}  Specifies the baseline period relative to the moment of the event of interest; the default is -1.
 {p_end}
+{synopt:{opt level(#)}} Set confidence {help level}; default is level(95).
+{p_end}
 {synopt:{opt accum}}  Accumulates periods beyond indicated lags and leads into a final coefficient/confidence interval.
 {p_end}
 {synopt:{opt lags(#)}}  Specifies the number of lags which should be included. This is only required when specifying the {cmd:accum} or {cmd:keepbal} options, otherwise all possible lags will be plotted.
@@ -72,31 +74,36 @@ numeric)
 {pstd}
 
 {pstd}
- {cmd:eventDD} estimates a panel event study corresponding to a difference-in-difference style model where a
- series of lag and lead coefficients and confidence intervals are estimated and plotted.  These lag and lead
- coefficients are all relative to the passage of an event of interest, which can occur at different moments in
- different units of the panel.  The estimated model is of the general format:
+ {cmd:eventDD} estimates a panel event study corresponding to a difference-in-difference style model
+ where a series of lag and lead coefficients and confidence intervals are estimated and plotted.
+ These lag and lead coefficients are all relative to the passage of an event of interest, which can
+ occur at different moments in different units of the panel.  The estimated model is of the general
+ format:
 
 {p 8 12 2}y_st = Alpha + {bind:Lag^K_st * BetaK} + ... + {bind:Lag^2_st * Beta2} + {bind:Lead^0_st * gamma0} + ... {bind:Lead^L_st * gammaL} + mu_s + lambda_t + u_st      (1)
 
 {pstd}
- where {it: y_st} is an outcome of interest for state {it: s} and time {it: t}, and a series of K Leads and L Lags
- are considered relative to the event of interest.  Fixed effects for state and time are included as {mu_s} and
- {lambda_t} respectively. 
+ where {it: y_st} is an outcome of interest for state {it: s} and time {it: t}, and a series of K
+ Leads and L Lags are considered relative to the event of interest.  Fixed effects for state and
+ time are included as {mu_s} and {lambda_t} respectively. 
  
+{pstd}
+The command requires that the basic model be specified without lags and leads, and a variable
+should be indicated in {opt: timevar()} which defines the standardized version of the time until
+the event, with missing values for units in which the event never occurs (pure control units).
+ The command generates the estimation results and a graph documenting the coefficients and confidence
+ intervals on all indicated lags and leads.  By default, the command uses as a baseline time period
+ -1 (one year prior to the event of interest) and estimates event study models using Stata's
+ {help regress} command.  However the command can also be spceify that estimation should proceed
+ using {help xtreg} or {help reghdfe} (if installed).  Similarly, if specified, inference in
+ eventDD can be based on wild bootstrapped standard errors using the {help boottest} command
+ (if installed).
 
 {pstd}
-The command requires that the basic model be specified without lags and leads, and a variable should be indicated
-in {opt: timevar()} which defines the standardized version of the time until the event, with missing values for
-units in which the event never occurs (pure control units).
- The command generates the estimation results and a graph documenting the coefficients and confidence intervals on
- all indicated lags and leads.  By default, the command uses as a baseline time period -1 (one year prior to the event
- of interest) and estimates event study models using Stata's {help regress} command.
-
-{pstd}
- {cmd:eventDD} provides a useful check of parallel {it: pre}-trends in the context of a difference-in-differences (DD)
- estimator.  Broader discussion of these models are provided in Angrist and Pischke (2009, section 5.2), Freyaldenhoven
- et al,. (2019), and Goodman-Bacon (2018) (among many other references).  Examples of use are given in the "Examples"
+ {cmd:eventDD} provides a useful check of parallel {it: pre}-trends in the context of a
+ difference-in-differences (DD) estimator.  Broader discussion of these models are provided in
+ Angrist and Pischke (2009, section 5.2), Freyaldenhoven et al,. (2019), and Goodman-Bacon
+ (2018) (among many other references).  Examples of use are given in the "Examples"
  section below.
 
 {pstd}
@@ -105,87 +112,114 @@ units in which the event never occurs (pure control units).
 {title:Options}
 {dlgtab:Main}
 {phang}
-{opt timevar(varname)}  is required. The time variable specified must be standardized, where 0 corresponds to the first year of intervention and for the control unit(s) missing values are observed.
+{opt timevar(varname)} is a required option. The time variable specified should contain a standardized
+ value 0 corresponds to the time period in which the event of interest occurs for a given unit,
+ -1 refers to one year prior to the event, 1 refers to one year following the event, and so forth.
+ For any units in which the event does not occur (pure controls), this variable should contain missing
+ values. 
 
 {pstd}
 {p_end}
 {phang}
-{opt xtitle(passthru)}  is required. Specifies the title to appear next to the time axe (x-axe in graph). They also allow you to format the title fonts (see {help axis_title_options}).
+{opt baseline(#)}  Specifies the reference period for the event study, which is a baseline omitted category to which all other periods should be compared on the event study output.  By default this value is set at -1.
 
 {pstd}
 {p_end}
 {phang}
-{opt baseline(#)}  specifies the reference period which the results of the rest of the periods are compared. Normally, it is some period before the intervention. The default is -1.
+{opt level(#)}  Specifies the confidence level, as a percentage, for confidence intervals.  The default is level(95) or as set by set level.  This sets the levels for confidence intervals in regression output, as well as the event study plot and returned matrices.
 
 {pstd}
 {p_end}
 {phang}
-{opt accum}  allows to accumulate the observations in the periods specified in {cmd: lags()} and  {cmd: leads()}, called endpoints.
+{opt accum} Specifies that all periods beyond some specified values should be accumulated into final points.  For example if {opt accum} is specified and {opt lags(#)} and {opt leads(#)} are both set equal to 10, a single coefficient will be displayed in regressions and graphical output capturing 10 or more periods prior/post reform.  If {opt accum} is not specified, all possible lags and leads will be included in models and graphical output.
 
 {pstd}
 {p_end}
 {phang}
-{opt noend}   allows not show the endpoints' estimations in the graph, when specified the {cmd:accum} option.
+{opt lags(#)}  Indicates the maximum amount of pre-event periods to consider in the event study.  This can only be specified if either {cmd:accum} or {cmd:keepbal} are also specified.  Only integer values are permitted.
 
 {pstd}
 {p_end}
 {phang}
-{opt keepbal(varname)}  specifying the panel variable, allows to keep only the balanced units' observations for the estimation and graph.
+{opt leads(#)}  Indicates the maximum amount of post-event periods to consider in the event study.  This can only be specified if either {cmd:accum} or {cmd:keepbal} are also specified.  Only integer values are permitted. 
 
 {pstd}
 {p_end}
 {phang}
-{opt lags(#)}  allows to specify the lower period to consider for the results, if specified {cmd:accum} or {cmd:keepbal} options.
+{opt noend}  Requests that accumulative end points are not shown on graphical output when the {opt accum} option is specified.
 
 {pstd}
 {p_end}
 {phang}
-{opt leads(#)}  allows to specify the upper period to consider for the results, if specified {cmd:accum} or {cmd:keepbal} options.
+{opt keepbal(varname)}  Specifies that only units which are balanced in the panel should be kept for estimation.  Here {it:varname} indicates the panel variable (eg state) which indicates units.
+In this case "balance" refers to balance over calendar time.   An alternative option ({opt balanced}),
+discussed below, allows for only balanced lags and leads {it:relative} to treatment to be considered in graphical output.
 
 {pstd}
 {p_end}
 {phang}
-{opt ols}   the default estimator. It uses ordinary least-squares to estimation (see {help regress}). To control by individual fixed effects is necessary to include in the regression the panel dummies variables.
+{opt ols}  Requests that the event study model underlying graphical output should be estimated by OLS using Stata's {help regress} command.
+In this case, unit-specific fixed effects and time-specific fixed effects must be included in the {help varlist} indicated in the command syntax.
+This is the default estimation method.
 
 {pstd}
 {p_end}
 {phang}
-{opt fe}  it uses fixed-effects (within) to estimation (see {help xtreg}, FE_options). With the fixed-effects estimator is not necessary to include the panel dummies variables.
+{opt fe}  Requests that the event study model underlying graphical output should be estimated by
+fixed-effects (within) estimation, using Stata's {help xtreg}, fe command.  In this case the data
+must be {help xtset} prior to use, and unit-specific fixed effects {it: should not} be included in
+the {help varlist} indicated in the command syntax.  Time-specific fixed effects still need to be
+included in the {help varlist} indicated in the command syntax.
 
 {pstd}
 {p_end}
 {phang}
-{opt hdfe}   it uses a linear regression absorbing multiple levels of fixed effects (see {help reghdfe}). May not be combined with {cmd:wboot} option
+{opt hdfe} Requests that the event study model underlying graphical output should be estimated
+using the user-written {help reghdfe} command (if installed).  If this option is specified,
+the {opt: absorb(varname)} option should also be specified to indicate which fixed effects
+should be controlled in the regression.  Any fixed effects indicated in {opt: absorb(varname)}
+should not be included in the {help varlist} indicated in the command syntax.  This option
+cannot be used in combination with the {opt wboot} option.
 
 {pstd}
 {p_end}
 {phang}
-{opt absorb(passthru)}  Only required when specifying the {cmd:hdfe} estimation option. Identifies the fixed effects to be absorbed; can be variable(s), categorical variables or factor variables (see {help reghdfe}).
+{opt absorb(varlist)}  This option is only required when specifying the {cmd:hdfe} estimation option.
+The {help varlist} identifies fixed effects to be absorbed (such as unit fixed effects).  Refer to
+{help reghdfe} (if installed) for additional details.
 
 {pstd}
 {p_end}
 {phang}
-{opt wboot}  allows to use Wild Bootstrap standard errors to calculate the confidence intervals. May not be combined with {cmd:reghdfe} estimation option.
+{opt wboot}  Indicates that inference in the event study plot produced by the command should be
+based on wild cluster bootstrapped standard errors.  This requires the user-written {help: boottest}
+command (if installed).  This option may not be combined with the {cmd:hdfe} estimation option.
 
 {pstd}
 {p_end}
 {phang}
-{opt seed(passthru)}  sets the {help seed} for simulation based calculations when using a {cmd:wboot} option. Setting the seed allows for confidential inetrvals to be replicated.
+{opt seed(#)}  Sets the {help seed} for simulation based calculations when using the {cmd:wboot} option. Setting the seed allows for confidence intervals to be replicated in repeated calls to {cmd:eventDD}.
 
 {pstd}
 {p_end}
 {phang}
-{opt *}  allows for the inclusion of any estimation option and variance estimators in {help estimation option} and {help vce_option}, respectively.
+{opt *} Any other {help estimation options} permitted by {cmd:regress}, {cmd:xtreg}, or {cmd:reghdfe} can be included, and will be passed to the specified estimation command.
+This allows for the inclusion of clustered standard errors or other variance estimators (see {help vce_option}).
 
 {pstd}
 {p_end}
 {phang}
-{opt balanced}  allows to graph only the balanced periods, but considered all units and periods in the estimation.
+{opt balanced} Requests that only "balanced" lags and leads are plotted.  This will produce a
+graph only showing lags and leads for which each treated unit has data, and as such, all
+coefficients plotted will be based on all units in the data.  While only balanced lags and leads
+will be plotted, all units and time periods will be included in the estimation of the event study.
 
 {pstd}
 {p_end}
 {phang}
-{opt graph_op(string)}  allows for the inclusion of any graphing option in {help twoway_options} , including {help title_options}, {help added_lines_options}, {help axis_label_options}, among others.
+{opt graph_op(string)}  allows for the inclusion of any other graphing option permitted in
+{help twoway_options}, including {help title_options}, {help added_lines_options}, {help axis_label_options}, among others.  This also allows for the use of alternative labels for graph axes.
+If not specified, a standard graphical output will be provided.
 
 {pstd}
 {p_end}
@@ -196,22 +230,22 @@ units in which the event never occurs (pure control units).
 {pstd}
 
 {pstd}
-Load data that replicates Stevenson and Wolfers' (2006) analysis of no-fault divorce reforms and female suicide.
+Load data that replicates Stevenson and Wolfers' (2006) analysis of no-fault divorce reforms and female suicide, circulated with the {help bacondecomp} command.
 
 {pstd}
- . {stata webuse set www.pped.org}
+ . {stata webuse set www.damianclarke.net/stata/}
 
 {pstd}
  . {stata webuse bacon_example.dta}
 
 {pstd}
-Estimate a two-way fixed effect DD model of female suicide on no-fault divorce reforms.
+Estimate a baseline two-way fixed effect DD model of female suicide on no-fault divorce reforms.
 
 {pstd}
  . {stata xtreg asmrs post pcinc asmrh cases i.year, fe cluster(stfips)}
 
 {pstd}
-Generate standarized event-time variable
+Generate standarized event-time variable giving time until passage of event for each state
 
 {pstd}
  . {stata gen timeToTreat = year - _nfd}
@@ -220,25 +254,44 @@ Generate standarized event-time variable
 Generate the event study plot associated to DD model of female suicide on no-fault divorce reforms with all periods.
 
 {pstd}
- . {stata eventDD asmrs i.year, fe timevar(timeToTreat) cluster(stfips) xtitle("Time") graph_op(ytitle("Suicides per 1m Women") xlabel(-20(5)25))}
+ . {stata eventDD asmrs i.year, fe timevar(timeToTreat) cluster(stfips) graph_op(ytitle("Suicides per 1m Women") xlabel(-20(5)25) xtitle("Time"))}
 
 {pstd}
 Generate the event study plot associated to DD model of female suicide on no-fault divorce reforms with all periods but only showing balanced periods in plot.
 
 {pstd}
- . {stata eventDD asmrs pcinc asmrh cases i.year i.stfips, fe timevar(timeToTreat) cluster(stfips) xtitle("Time") balanced graph_op(ytitle("Suicides per 1m Women"))}
+ . {stata eventDD asmrs pcinc asmrh cases i.year i.stfips, fe timevar(timeToTreat) cluster(stfips) balanced graph_op(ytitle("Suicides per 1m Women"))}
 
 {pstd}
 Generate the event study plot associated to DD model of female suicide on no-fault divorce reforms only using balanced observations in the specified period.
 
 {pstd}
- . {stata eventDD asmrs i.year, fe timevar(timeToTreat) cluster(stfips) xtitle("Time") lags(21) leads(27) keepbal(stfips) graph_op(ytitle("Suicides per 1m Women") xlabel(-20(5)25))}
+ . {stata eventDD asmrs i.year, fe timevar(timeToTreat) cluster(stfips) lags(6) leads(15) keepbal(stfips) graph_op(ytitle("Suicides per 1m Women"))}
 
 {pstd}
 
 {title:Stored results}
 
 {synoptset 15 tabbed}{...}
+
+{cmd:eventDD} stores the following in {cmd:e()}:
+
+{synoptset 20 tabbed}{...}
+{p2col 5 20 24 2: Macros}{p_end}
+{synopt:{cmd:e(cmd)}}{cmd:eventDD}{p_end}
+{synopt:{cmd:e(cmdline)}}command as typed{p_end}
+{synopt:{cmd:e(depvar)}}name of dependent variable{p_end}
+{synopt:{cmd:e(wtype)}}weight type{p_end}
+{synopt:{cmd:e(clustvar)}}name of cluster variable{p_end}
+{synopt:{cmd:e(vce)}}{it:vcetype} specified in {cmd:vce()}{p_end}
+{synopt:{cmd:e(vcetype)}}title used to label Std. Err.{p_end}
+
+{synoptset 20 tabbed}{...}
+{p2col 5 20 24 2: Matrices}{p_end}
+{synopt:{cmd:e(b)}}coefficient vector{p_end}
+{synopt:{cmd:e(V)}}variance-covariance matrix of the estimators{p_end}
+{synopt:{cmd:e(leads)}}all event leads, their lower bound, the point estimate, and their upper bound{p_end}
+{synopt:{cmd:e(lags)}}all event lags, their lower bound, the point estimate, and their upper bound{p_end}
 
 
 {title:References}
