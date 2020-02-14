@@ -22,8 +22,7 @@ numeric)
 [{help in}]
 [{help weight}]{cmd:,}
 {it:timevar(varname)}
-[
-{it:options}]
+[{it:options}]
 
 {synoptset 20 tabbed}{...}
 {synopthdr}
@@ -61,7 +60,7 @@ numeric)
 {p_end}
 {synopt:{opt graph_op(string)}}  specifies any options in {help twoway_options} which should be passed to the resulting event study graph, (eg title, axis, labels).
 {p_end}
-{synopt:{opt *}}  specifies any additional {help estimation options} and {help vce_option} which should be passed to the event study model, (ie robust or clustered sandwich estimator of variance).
+{synopt:{opt *}}  specifies any additional {help estimation options} and {help vce_option} which should be passed to the event study model, (eg robust or clustered sandwich estimator of variance).
 
 {pstd}
 {p_end}
@@ -89,7 +88,7 @@ numeric)
  
 {pstd}
 The command requires that the basic model be specified without lags and leads, and a variable
-should be indicated in {opt: timevar()} which defines the standardized version of the time until
+should be indicated in {cmd: timevar()} which defines the standardized version of the time until
 the event, with missing values for units in which the event never occurs (pure control units).
  The command generates the estimation results and a graph documenting the coefficients and confidence
  intervals on all indicated lags and leads.  By default, the command uses as a baseline time period
