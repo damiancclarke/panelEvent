@@ -1,14 +1,6 @@
 *! eventDD: Estimate panel event study models and generate plots
-*! Version 1.0.0 february 2, 2020 @ 11:06:20
+*! Version 1.0.0 february 17, 2020 @ 23:03:06
 *! Author: Damian Clarke & Kathya Tapia Schythe
-
-/*
- TO CHECK
-   - Shall we rename ptime as something more unique?  Eg _ptime
-   - Check if the dots in the matrix are okay with rownmanes?
-   - I suggest not printing out the matrix, just storing it
-   - shall we replace as many variables we generate as possible with tempvars?  This way we avoid any name clashes with variables already there
-*/
 
 cap program drop eventDD
 program eventDD, eclass
@@ -19,7 +11,7 @@ vers 13.0
 *-------------------------------------------------------------------------------
 #delimit ;
 syntax varlist(min=2 fv ts numeric) [if] [in] [pw fw aw iw],
-timevar(varname)             /*Standardized time variabl*/
+timevar(varname)             /*Standardized time variable*/
   [
   baseline(integer -1)       /*Reference period*/
   accum                      /*Accumulate time in final lags and leads*/
@@ -41,34 +33,34 @@ local wt [`weight' `exp']
 
 preserve
 
-rename `timevar' ptime
-local tvar ptime
+rename `timevar' _Ptime
+local tvar _Ptime
 
 *-------------------------------------------------------------------------------
 *--- (2) General syntax consistency check
 *-------------------------------------------------------------------------------
 if ("`ols'"!="") + ("`fe'"!="") + ("`hdfe'"!="") >1 { 
-    di as err "choose only one of {bf:ols}, {bf:fe}, or {bf:hdfe}"
+    di as err "Choose only one of {bf:ols}, {bf:fe}, or {bf:hdfe}."
     exit 198 
 }
 
 if ("`hdfe'"!="") + ("`wboot'"!="")  >1 { 
-    di as err "{bf:hdfe} may not be combined with {bf:wboot}"
+    di as err "{bf:hdfe} may not be combined with {bf:wboot}."
     exit 198 
 }
 
 if ("`accum'"!="") + ("`balanced'"!="")  >1 { 
-    di as err "{bf:accum} may not be combined with {bf:balanced}"
+    di as err "{bf:accum} may not be combined with {bf:balanced}."
     exit 198 
 }
 		
 if ("`accum'"=="") + ("`end'"!="")  >1 { 
-    di as err "option {bf:end} requires {bf:accum}"
+    di as err "Option {bf:end} requires {bf:accum}."
     exit 198 
 }
 
 if ("`accum'"=="accum") + ("`keepbal'"!="")  >1 { 
-    di as err "choose only one of {bf:accum} or {bf:keepbal}" 
+    di as err "Choose only one of {bf:accum} or {bf:keepbal}." 
     exit 198 
 }
 		
@@ -76,34 +68,34 @@ qui sum `tvar'
 local min  = r(min)
 local max  = r(max)
 if `baseline' < `min' | `baseline' > `max' { 
-    di as err "{bf:baseline} not found"
+    di as err "{bf:baseline} period not found within data."
     exit 198 
 }
 		
 if ("`lags'" != "0" ) & ("`accum'" == "" ) & ("`keepbal'" == "")  ==1{
-    di as err "options {bf:lags()} and {bf:leads()} require {bf:accum} or {bf:keepbal}"
+    di as err "Options {bf:lags()} and {bf:leads()} require {bf:accum} or {bf:keepbal}."
     exit 198
 }
 if ("`leads'" != "0" ) & ("`accum'" == "" ) & ("`keepbal'" == "") ==1{
-    di as err "options {bf:lags()} and {bf:leads()} require {bf:accum} or {bf:keepbal}"
+    di as err "Options {bf:lags()} and {bf:leads()} require {bf:accum} or {bf:keepbal}."
     exit 198
 }
 	
 if ("`accum'" == "accum" ) + ("`keepbal'" != "") ==1{
-    if ("`lags'" == "0" ) ==  1{
-        di as err "options {bf:lags()} and {bf:leads()} required"
+    if ("`lags'" == "0" )==1 {
+        di as err "Options {bf:lags()} and {bf:leads()} required."
         exit 198
     }
-    if ("`leads'" == "0" ) == 1{
-	di as err "options {bf:lags()} and {bf:leads()} required"
+    if ("`leads'" == "0" )==1 {
+	di as err "Options {bf:lags()} and {bf:leads()} required."
 	exit 198
     }
     if  `min' > -`lags' { 
-	di as err "{bf:lags} not found"
+	di as err "Specified {bf:lags} not found in data."
 	exit 198 
     }
     if `max' < `leads' { 
-	di as err "{bf:leads} not found"
+	di as err "Specified {bf:leads} not found in data."
 	exit 198 
     }
     if `baseline' < -`lags' | `baseline' > `leads' { 
@@ -117,17 +109,19 @@ if ("`accum'" == "accum" ) + ("`keepbal'" != "") ==1{
 *-------------------------------------------------------------------------------     
 if ("`keepbal'"!="")== 1{
     local tbal=`lags'+`leads'+1
-    qui tab `tvar' if `tvar'>=-`lags' & `tvar'<=`leads', gen(tbal)
-    qui egen rbal=rowtotal(tbal*)
-    qui bysort `keepbal': egen bal=total(rbal) if rbal!=0
-    qui count if bal==`tbal'
+    qui tab `tvar' if `tvar'>=-`lags' & `tvar'<=`leads', gen(_Tbal)
+    tempvar rbal
+    qui egen `rbal'=rowtotal(_Tbal*)
+    tempvar bal
+    qui bysort `keepbal': egen `bal'=total(`rbal') if `rbal'!=0
+    qui count if `bal'==`tbal'
     local un=r(N)
     if `un'==0{
-        di as err "no unit meets the criteria"
+        di as err "no unit meets the {bf:keepbal} criteria"
 	exit 
     }
     else {
-        qui keep if bal==`tbal' | `tvar'==.
+        qui keep if `bal'==`tbal' | `tvar'==.
     }
     qui recode `tvar' (.=`baseline')
     qui char `tvar'[omit] `baseline'
@@ -203,21 +197,21 @@ if `baseline'<0 {
     if `baseline'==`min' {
         local i = 1
         foreach n of numlist `t_1'(-1)2{
-            qui rename _lfptime_`n' lag`i'
+            qui rename _lf_Ptime_`n' lag`i'
             local ++i
         }
     }
     else if `baseline'==-1 {
         local i = 2
         foreach n of numlist `prebase'(-1)1{
-            qui rename _lfptime_`n' lag`i'
+            qui rename _lf_Ptime_`n' lag`i'
             local ++i
         }
     }
     else {
         local i = 1
         foreach n of numlist `t_1'(-1)`postbase' `prebase'(-1)1{
-            qui rename _lfptime_`n' lag`i'
+            qui rename _lf_Ptime_`n' lag`i'
             local ++i
             if `n'== `postbase'{
                 local ++i
@@ -226,7 +220,7 @@ if `baseline'<0 {
     }
     local k = 0
     foreach n of numlist `t0'(1)`tot'{
-        qui rename _lfptime_`n' lead`k'
+        qui rename _lf_Ptime_`n' lead`k'
 	local ++k
     }
     
@@ -237,21 +231,21 @@ else if `baseline'>=0 {
     if `baseline'==`max' {
         local k = 0
         foreach n of numlist `t0'(1)`prebase'{
-            qui rename _lfptime_`n' lead`k'
+            qui rename _lf_Ptime_`n' lead`k'
             local ++k
         }
     }
     else if `baseline'==0 {
         local k = 1
         foreach n of numlist `postbase'(1)`tot'{
-            qui rename _lfptime_`n' lead`k'
+            qui rename _lf_Ptime_`n' lead`k'
             local ++k
         }
     }
     else {
         local k = 0
         foreach n of numlist `t0'(1)`prebase' `postbase'(1)`tot'{
-            qui rename _lfptime_`n' lead`k'
+            qui rename _lf_Ptime_`n' lead`k'
             local ++k
             if `n'== `prebase'{
                 local ++k
@@ -260,7 +254,7 @@ else if `baseline'>=0 {
     }
     local i = 1
     foreach n of numlist `t_1'(-1)1{
-        qui rename _lfptime_`n' lag`i'
+        qui rename _lf_Ptime_`n' lag`i'
 	local ++i
     }
     
@@ -282,14 +276,18 @@ if ("`hdfe'"=="hdfe") == 1{
 	di as err "option {bf:absorb()} required"
 	exit 198
     }
-  
-    dis as err " Note: with {bf:HDFE} option do not include in {bf:varlist} the categorical variables that identify the fixed effects to be absorbed in {bf:absorb()}"
+
+    local e1 "Note: when specifying the {bf:hdfe} option, do not include the"
+    local e2 "categorical variables that identify fixed effects to be"
+    dis as err "`e1' `e2' absorbed as part of the {bf:varlist}"
 
     reghdfe `varlist' `tot_lags' `tot_leads' `if' `in' `wt' , `absorb' `options' 
 }
 
 else if ("`fe'"=="fe") == 1{
-    dis as err "Note: with {bf:FE} option do not include in {bf:varlist} the categorical variables that identify the individual fixed effect" 
+    local e1a "Note: when specifying the {bf:fe} option, do not include the"
+    local e2a "categorical variables that identify unit fixed effects"
+    dis as err "`e1a' `e2a' as part of the {bf:varlist}"
     
     xtreg `varlist' `tot_lags' `tot_leads' `if' `in' `wt' , fe `options' 
 }
@@ -419,30 +417,13 @@ if `baseline'<0 {
     qui gen `lgs'= abs(`times')
     qui mkmat `lgs' `lCI' `point' `uCI' if `times'<0 & `times'!=., matrix(lags)
     qui matrix colnames lags = Lag LB Est UB
-    qui matrix rownames lags = .
     qui matsort lags 1 "up"
     
     tempvar lds
     qui gen `lds'=`times'
     qui mkmat `lds' `lCI' `point' `uCI' if `times'>=0 & `times'!=., matrix(leads)
     qui matrix colnames leads = Lead LB Est UB
-    qui matrix rownames leads = .
     qui matsort leads 1 "up"
-    
-    /*
-    di %~59s "Lags Matrix"
-    if ("`accum'"=="accum") == 1{
-        di %~59s "Lag `lags' corresponds to `lags'+"
-    }
-    
-    mat list lags, noheader
-    di %~59s " "
-    di %~59s "Leads Matrix"
-    if ("`accum'"=="accum") == 1{
-       di %~59s "Lead `leads' corresponds to `leads'+"
-    }
-    mat list leads, noheader
-    */
 }
 else if `baseline'>=0 {
     if ("`wboot'"=="wboot") == 1{
@@ -546,29 +527,13 @@ else if `baseline'>=0 {
     qui gen `lgs'= abs(`times')
     qui mkmat `lgs' `lCI' `point' `uCI' if `times'<0 & `times'!=., matrix(lags)
     qui matrix colnames lags = Lag LB Est UB
-    qui matrix rownames lags = .
     qui matsort lags 1 "up"
     
     tempvar lds
     qui gen `lds'=`times'
     qui mkmat `lds' `lCI' `point' `uCI' if `times'>=0 & `times'!=., matrix(leads)
     qui matrix colnames leads = Lead LB Est UB
-    qui matrix rownames leads = .
     qui matsort leads 1 "up"
-
-    /*
-    di %~59s "Lags Matrix"
-    if ("`accum'"=="accum") == 1{
-       di %~59s "Lag `lags' corresponds to `lags'+"
-    }  
-    mat list lags, noheader
-    di %~59s " "
-    di %~59s "Leads Matrix"
-    if ("`accum'"=="accum") == 1{
-        di %~59s "Lead `leads' corresponds to `leads'+"
-    }
-    mat list leads, noheader
-    */
 }
 
 
@@ -576,13 +541,16 @@ else if `baseline'>=0 {
 *--- (6) Graph
 *-------------------------------------------------------------------------------     
 sort `times'
+
+graph set eps fontface "Times New Roman"
+set scheme s1mono
+
 if ("`xtitle'"!="") == 1 {
 
     if ("`balanced'"=="balanced") == 1{
-        foreach var in obs {
-            tempvar `var'
-            qui gen ``var''=.
-        }
+        tempvar obs
+        qui gen `obs'=.
+       
         local k = 1
         foreach t of numlist `min'(1)`max' {
             qui sum `tvar' if `tvar'==`t'
@@ -598,8 +566,6 @@ if ("`xtitle'"!="") == 1 {
         local max2=el(x,2,1) 
         qui tab `times' if `obs'>=`max2'
         local bal=r(r)
-        graph set eps fontface "Times New Roman"
-        set scheme s1mono
         
         #delimit ;
         twoway rarea `lCI' `uCI' `times' if `obs'>=`max2',
@@ -614,8 +580,6 @@ if ("`xtitle'"!="") == 1 {
         if ("`end'"=="noend") == 1{
             local lpoint = `lags' -1 
             local upoint = `leads'-1 
-            graph set eps fontface "Times New Roman"
-            set scheme s1mono
             #delimit ;
             twoway rarea `lCI' `uCI' `times' if inrange(`times', -`lpoint', `upoint'),
             color(gs14%40) yline(0, lcolor(red))       
@@ -625,8 +589,6 @@ if ("`xtitle'"!="") == 1 {
             #delimit cr
         }
         else {
-            graph set eps fontface "Times New Roman"
-            set scheme s1mono
             #delimit ;
             twoway rarea `lCI' `uCI' `times',
             color(gs14%40) yline(0, lcolor(red))       
@@ -640,8 +602,6 @@ if ("`xtitle'"!="") == 1 {
         }
     }
     else if ("`keepbal'"!="") == 1 {
-        graph set eps fontface "Times New Roman"
-        set scheme s1mono
         #delimit ;
         twoway rarea `lCI' `uCI' `times',
         color(gs14%40) yline(0, lcolor(red))       
@@ -652,8 +612,6 @@ if ("`xtitle'"!="") == 1 {
         #delimit cr
     }
 else {
-        graph set eps fontface "Times New Roman"
-        set scheme s1mono
         #delimit ;
         twoway rarea `lCI' `uCI' `times' if inrange(`times', `min', `max'),
         color(gs14%40) yline(0, lcolor(red))       
@@ -666,10 +624,9 @@ else {
 
 else {
     if ("`balanced'"=="balanced") == 1{
-        foreach var in obs {
-            tempvar `var'
-            qui gen ``var''=.
-        }
+        tempvar obs
+        qui gen `obs'=.
+        
         local k = 1
         foreach t of numlist `min'(1)`max' {
             qui sum `tvar' if `tvar'==`t'
@@ -685,8 +642,6 @@ else {
         local max2=el(x,2,1) 
         qui tab `times' if `obs'>=`max2'
         local bal=r(r)
-        graph set eps fontface "Times New Roman"
-        set scheme s1mono
         #delimit ;
         twoway rarea `lCI' `uCI' `times' if `obs'>=`max2',
         color(gs14%40) yline(0, lcolor(red))       
@@ -701,8 +656,6 @@ else {
         if ("`end'"=="noend") == 1{
             local lpoint = `lags' -1 
             local upoint = `leads'-1 
-            graph set eps fontface "Times New Roman"
-            set scheme s1mono
             #delimit ;
             twoway rarea `lCI' `uCI' `times' if inrange(`times', -`lpoint', `upoint'),
             color(gs14%40) yline(0, lcolor(red))       
@@ -713,8 +666,6 @@ else {
            #delimit cr
         }
         else {
-            graph set eps fontface "Times New Roman"
-            set scheme s1mono
             #delimit ;
             twoway rarea `lCI' `uCI' `times', color(gs14%40) yline(0, lcolor(red))       
             || scatter `point' `times', 
@@ -727,8 +678,6 @@ else {
         }
     }
     else if ("`keepbal'"!="") == 1{
-        graph set eps fontface "Times New Roman"
-        set scheme s1mono
         #delimit ;
         twoway rarea `lCI' `uCI' `times',
         color(gs14%40) yline(0, lcolor(red))       
@@ -739,8 +688,6 @@ else {
         #delimit cr
     }
     else {
-        graph set eps fontface "Times New Roman"
-        set scheme s1mono
         #delimit ;
         twoway rarea `lCI' `uCI' `times' if inrange(`times', `min', `max'),
         color(gs14%40) yline(0, lcolor(red))       
@@ -761,7 +708,6 @@ ereturn local cmd "eventDD"
 ereturn scalar level=`lev'
 ereturn matrix lags  lags
 ereturn matrix leads leads
-
 
 restore
 
