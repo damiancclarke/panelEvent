@@ -1,5 +1,5 @@
 *! eventdd: Estimate panel event study models and generate plots
-*! Version 1.1.0 may 14, 2020 @ 13:55:51
+*! Version 1.0.0 february 14, 2020 @ 11:06:20
 *! Author: Damian Clarke & Kathya Tapia Schythe
 
 cap program drop eventdd
@@ -23,14 +23,14 @@ ci(string)                   /*Type of CI, rarea, rcap or rline*/
   ols fe hdfe                /*Type of FE estimation: FE, HDFE (default: OLS)*/
   absorb(passthru)           /*Only to be used where hdfe is specified*/
   wboot                      /*Wild bootstrap standard errors*/
-  seed(passthru)             /*Sets seed for replicating wild bootstrap SEs.*/
+  wboot_op(string)           /*Options for boottest*/
   *                          /*Other regression options*/
   balanced                   /*Use a balanced panel in all lags/leads selected*/
   inrange				     /*Show periods between lags and leads*/
-  graph_op(string asis)   		 /*General graphing options: titles, subtitle, scheme, note, label */
-  ci_op(string)              /*CI (rcap/rarea/line) graphing options*/
+  graph_op(string asis)      /*General graphing options: titles, subtitle, scheme, note, label */
+  ci_op(string asis)         /*CI (rcap/rarea/line) graphing options*/
   coef_op(string)            /*Coef (scatter) graphing options*/
-  endpoints_op(string)		 /*Endpoints (scatter) graphing options*/
+  endpoints_op(string asis)  /*Endpoints (scatter) graphing options*/
   ];
 #delimit cr
 
@@ -379,14 +379,12 @@ else {
     reg `varlist' `tot_lags' `tot_leads' `if' `in' `wt' , `options' 
 }
 
+qui matrix v=e(V)
+
 *-------------------------------------------------------------------------------
 *--- (5) Generate point estimates and confidence intervals
 *-------------------------------------------------------------------------------
-local lev   = r(level)
-local alp   = (100-r(level))/100
-local critu = `alp'/2
-local critl = 1-`critu'
-  
+ 
 foreach var in point uCI lCI {
     tempvar `var'
     qui gen ``var''=.
@@ -401,7 +399,7 @@ if `baseline'<0 {
             foreach t of numlist `t_2'(-1)1{
                 qui replace `point'=_b[lag`t'] in `i'
                 
-                cap qui boottest lag`t', nograph `seed' level(`lev')
+                cap qui boottest lag`t', nograph `wboot_op'
                 cap mat ci_lag`t'= r(CI)
                 cap qui replace `lCI'  = ci_lag`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lag`t'[1,2] in `i'
@@ -413,7 +411,7 @@ if `baseline'<0 {
             foreach t of numlist `t_1'(-1)2{
                 qui replace `point'=_b[lag`t'] in `i'
                 
-                cap qui boottest lag`t', nograph `seed' level(`lev')
+                cap qui boottest lag`t', nograph `wboot_op'
                 cap mat ci_lag`t'= r(CI)
                 cap qui replace `lCI'  = ci_lag`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lag`t'[1,2] in `i'
@@ -426,7 +424,7 @@ if `baseline'<0 {
             foreach t of numlist `t_1'(-1)`_blpost' `_blpre'(-1)1{
                 qui replace `point'=_b[lag`t'] in `i'
                 
-                cap qui boottest lag`t', nograph `seed' level(`lev')
+                cap qui boottest lag`t', nograph `wboot_op'
                 cap mat ci_lag`t'= r(CI)
                 cap qui replace `lCI'  = ci_lag`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lag`t'[1,2] in `i'
@@ -439,14 +437,21 @@ if `baseline'<0 {
         foreach t of numlist 0(1)`max'{
             qui replace `point'=_b[lead`t'] in `i'
             
-            cap qui boottest lead`t', nograph `seed' level(`lev')
+            cap qui boottest lead`t', nograph `wboot_op'
             cap mat ci_lead`t'= r(CI)
             cap qui replace `lCI'  = ci_lead`t'[1,1] in `i'
             cap qui replace `uCI'  = ci_lead`t'[1,2] in `i'
             local ++i
         }
-    }
+    local lev   = r(level)
+	
+	}
     else {
+	local lev   = r(level)
+	local alp   = (100-r(level))/100
+	local critu = `alp'/2
+	local critl = 1-`critu'
+	
         if `baseline'==`min' {
             local i = 2
             foreach t of numlist `t_2'(-1)1{
@@ -531,7 +536,7 @@ else if `baseline'>=0 {
         foreach t of numlist `t_1'(-1)1{
             qui replace `point'=_b[lag`t'] in `i'
             
-            cap qui boottest lag`t', nograph `seed' level(`lev')
+            cap qui boottest lag`t', nograph `wboot_op'
             cap mat ci_lag`t'= r(CI)
             cap qui replace `lCI'  = ci_lag`t'[1,1] in `i'
             cap qui replace `uCI'  = ci_lag`t'[1,2] in `i'
@@ -541,7 +546,7 @@ else if `baseline'>=0 {
             foreach t of numlist 0(1)`t_3'{
                 qui replace `point'=_b[lead`t'] in `i'
                 
-                cap qui boottest lead`t', nograph `seed' level(`lev')
+                cap qui boottest lead`t', nograph `wboot_op'
                 cap mat ci_lead`t'= r(CI)
                 cap qui replace `lCI'  = ci_lead`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lead`t'[1,2] in `i'
@@ -553,7 +558,7 @@ else if `baseline'>=0 {
             foreach t of numlist 1(1)`max'{
                 qui replace `point'=_b[lead`t'] in `i'
                 
-                cap qui boottest lead`t', nograph `seed' level(`lev')
+                cap qui boottest lead`t', nograph `wboot_op'
                 cap mat ci_lead`t'= r(CI)
                 cap qui replace `lCI'  = ci_lead`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lead`t'[1,2] in `i'
@@ -564,7 +569,7 @@ else if `baseline'>=0 {
             foreach t of numlist 0(1)`_blpre' `_blpost'(1)`max'{
                 qui replace `point'=_b[lead`t'] in `i'
                 
-                cap qui boottest lead`t', nograph `seed' level(`lev')
+                cap qui boottest lead`t', nograph `wboot_op'
                 cap mat ci_lead`t'= r(CI)
                 cap qui replace `lCI'  = ci_lead`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lead`t'[1,2] in `i'
@@ -574,8 +579,15 @@ else if `baseline'>=0 {
                 }
             }
         }
-    }
+    local lev   = r(level)
+	
+	}
     else {
+	local lev   = r(level)
+	local alp   = (100-r(level))/100
+	local critu = `alp'/2
+	local critl = 1-`critu'
+	
         local i=1
         foreach t of numlist `t_1'(-1)1{
             qui replace `point'=_b[lag`t'] in `i'
@@ -652,6 +664,11 @@ else if `baseline'>=0 {
     */
 }
 
+qui sum `times'
+local minlag  = -r(min)
+local maxlead = r(max)
+
+qui matrix vll=v["lag`minlag'".."lead`maxlead'", "lag`minlag'".."lead`maxlead'"]
 
 *-------------------------------------------------------------------------------
 *--- (6) Graph
@@ -1115,11 +1132,11 @@ else {
 *--- (7) Return
 *-------------------------------------------------------------------------------     
 ereturn local cmdline `"`0'"'
-ereturn local cmd "eventDD"
+ereturn local cmd "eventdd"
 ereturn scalar level=`lev'
 ereturn matrix lags  lags
 ereturn matrix leads leads
-
+ereturn matrix V_lags_leads vll
 
 restore
 
