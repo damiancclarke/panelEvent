@@ -56,7 +56,8 @@ numeric)
 {p_end}
 {synopt:{opt wboot}} Requests that standard errors be estimated by wild bootstrap. This requires the user-written {help boottest} command.  May not be combined with the {cmd:hdfe} option.
 {p_end}
-{synopt:{opt wboot_op(string)}} Specifies any options for wild bootstrap estimation, (eg seed(), level(), bootcluster()).
+{synopt:{opt wboot_op(string)}} Specifies any options for wild bootstrap estimation, (eg seed(), level(), bootcluster()).  These will be passed to the {help boottest} command.  
+In the case of using the {help level} option, this should only be specified in the main command syntax.
 {p_end}
 {synopt:{opt balanced}}  Requests that only balanced periods in which all units have data be shown in the plot.
 {p_end}
@@ -64,7 +65,8 @@ numeric)
 {p_end}
 {synopt:{opt graph_op(string)}}  Specifies any general options in {help twoway_options} which should be passed to the resulting event study graph, (eg title, axis, labels, legends).
 {p_end}
-{synopt:{opt ci_op(string)}}  Specifies any options for confidence intervals indicated in {cmd:ci()}: {help twoway_rarea} for {cmd:rarea} (eg area), {help twoway_rcap} for {cmd:rcap} (eg line) or {help twoway_rline} for {cmd:rline} (eg connect) which should be passed to the resulting event study graph.
+{synopt:{opt ci_op(string)}}  Specifies any options for confidence intervals indicated in {cmd:ci()}: {help twoway_rarea} for {cmd:rarea} (eg area), {help twoway_rcap} for {cmd:rcap} (eg line) or {help twoway_rline} for {cmd:rline} (eg connect) 
+which should be passed to the resulting event study graph.
 {p_end}
 {synopt:{opt coef_op(string)}}  Specifies any options for coefficients in {help scatter} which should be passed to the resulting event study graph, (eg marker).
 {p_end}
@@ -103,7 +105,7 @@ the event, with missing values for units in which the event never occurs (pure c
  The command generates the estimation results and a graph documenting the coefficients and confidence
  intervals on all indicated lags and leads.  By default, the command uses as a baseline time period
  -1 (one year prior to the event of interest) and estimates event study models using Stata's
- {help regress} command.  However the command can also be spceify that estimation should proceed
+ {help regress} command.  However the command can also specify that estimation should proceed
  using {help xtreg} or {help reghdfe} (if installed).  Similarly, if specified, inference in
  eventdd can be based on wild bootstrapped standard errors using the {help boottest} command
  (if installed).
@@ -122,7 +124,7 @@ the event, with missing values for units in which the event never occurs (pure c
 {dlgtab:Main}
 {phang}
 {opt timevar(varname)} is a required option. The time variable specified should contain a standardized
- value 0 corresponds to the time period in which the event of interest occurs for a given unit,
+ value, where 0 corresponds to the time period in which the event of interest occurs for a given unit,
  -1 refers to one year prior to the event, 1 refers to one year following the event, and so forth.
  For any units in which the event does not occur (pure controls), this variable should contain missing
  values. 
@@ -142,12 +144,14 @@ The appearance can be modified with {cmd:ci_op()}.
 {pstd}
 {p_end}
 {phang}
-{opt level(#)}  Specifies the confidence level, as a percentage, for confidence intervals.  The default is level(95) or as set by set level.  This sets the levels for confidence intervals in regression output, as well as the event study plot and returned matrices.
+{opt level(#)}  Specifies the confidence level, as a percentage, for confidence intervals.  The default is level(95) or as set by set level.  This sets the levels for confidence intervals in regression output, as well as the event study plot and returned matrices.  
+This will also be passed to {help boottest} if wild clustered standard errors are requested.
 
 {pstd}
 {p_end}
 {phang}
-{opt accum} Specifies that all periods beyond some specified values should be accumulated into final points.  For example if {opt accum} is specified and {opt lags(#)} and {opt leads(#)} are both set equal to 10, a single coefficient will be displayed in regressions 
+{opt accum} Specifies that all periods beyond some specified values should be accumulated into final points.  For example if {opt accum} is specified and {opt lags(#)} and {opt leads(#)} are both set equal to 10, 
+a single coefficient will be displayed in regressions 
 and graphical output capturing 10 or more periods prior/post reform.  If {opt accum} is not specified, all possible lags and leads will be included in models and graphical output.
 
 {pstd}
@@ -193,8 +197,8 @@ included in the {help varlist} indicated in the command syntax.
 {phang}
 {opt hdfe} Requests that the event study model underlying graphical output should be estimated
 using the user-written {help reghdfe} command (if installed).  If this option is specified,
-the {opt absorb(varname)} option should also be specified to indicate which fixed effects
-should be controlled in the regression.  Any fixed effects indicated in {opt absorb(varname)}
+the {opt absorb(varlist)} option should also be specified to indicate which fixed effects
+should be controlled in the regression.  Any fixed effects indicated in {opt absorb(varlist)}
 should not be included in the {help varlist} indicated in the command syntax.  This option
 cannot be used in combination with the {opt wboot} option.
 
@@ -216,15 +220,10 @@ command (if installed).  This option may not be combined with the {cmd:hdfe} est
 {p_end}
 {phang}
 {opt wboot_op(string)}  Allows for the inclusion of any other wild bootstrap option permitted in {help boottest},
-including {cmd:seed(#)} to sets the seed for simulation based calculations and replicate the confidence intervals, 
-{cmd:level(#)} to set the confidence {help level} and {cmd:bootclust(varname)} to specify which 
-clustering variable(s) to boostrap on, among others.
-
-{pstd}
-{p_end}
-{phang}
-{opt *} Any other {help estimation options} permitted by {cmd:regress}, {cmd:xtreg}, or {cmd:reghdfe} can be included, and will be passed to the specified estimation command.
-This allows for the inclusion of clustered standard errors or other variance estimators (see {help vce_option}).
+including {cmd:seed(}#{cmd:)} to set the seed for simulation based calculations and replicate the confidence intervals, 
+and {opt bootclust(varname)} to specify which 
+variable(s) to cluster the wild boostrap upon, among others. When setting the level (which is 95 by default), this
+should be indicated in the {opt level} option of the command, and this will be passed to {opt wboot_op()}.
 
 {pstd}
 {p_end}
@@ -252,14 +251,14 @@ for the use of alternative labels for graph axes. If not specified, a standard g
 {phang}
 {opt ci_op(string)}  Allows for the inclusion of any graphing option for the confidence intervals permitted in {help twoway_rarea}, 
 {help twoway_rcap} or {help twoway_rline} depending on the type of CI indicated in {cmd:ci()}; including {help area_options}, 
-{help line_options} and {help connect_options}, respectively.  This not allow the use of the general options of {cmd:graph_op()}. If not specified, 
+{help line_options} and {help connect_options}, respectively.  This does not allow the use of the general options of {cmd:graph_op()}. If not specified, 
 a standard graphical output will be provided.
 
 {pstd}
 {p_end}
 {phang}
 {opt coef_op(string)}  Allows for the inclusion of any graphing option for the coefficients permitted in {help scatter} including 
-{help marker_options}, {help marker_label_options}, among others.  This not allow the use of the general options of {cmd:graph_op()}. 
+{help marker_options}, {help marker_label_options}, among others.  This does not allow the use of the general options of {cmd:graph_op()}. 
 If not specified, a standard graphical output will be provided.
 
 {pstd}
@@ -267,7 +266,13 @@ If not specified, a standard graphical output will be provided.
 {phang}
 {opt endpoints_op(string)}  Allows for the inclusion of any graphing option for the end points coefficients permitted in {help scatter} 
 including {help marker_options}, {help marker_label_options}, among others. This is only available if specifying the {cmd:accum} option and 
-not allow the use of the general options of {cmd:graph_op()}. If not specified, a standard graphical output will be provided.
+does not allow the use of the general options of {cmd:graph_op()}. If not specified, a standard graphical output will be provided.
+
+{pstd}
+{p_end}
+{phang}
+{opt *} Any other {help estimation options} permitted by {cmd:regress}, {cmd:xtreg}, or {cmd:reghdfe} can be included, and will be passed to the specified estimation command.
+This allows for the inclusion of clustered standard errors or other variance estimators (see {help vce_option}).
 
 {pstd}
 {p_end}
