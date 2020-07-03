@@ -1,5 +1,5 @@
 *! eventdd: Estimate panel event study models and generate plots
-*! Version 1.0.0 february 14, 2020 @ 11:06:20
+*! Version 2.0.0 july 03, 2020 @ 12:16:05
 *! Author: Damian Clarke & Kathya Tapia Schythe
 
 cap program drop eventdd
@@ -15,6 +15,7 @@ timevar(varname)             /*Standardized time variable*/
 ci(string)                   /*Type of CI, rarea, rcap or rline*/
   [
   baseline(integer -1)       /*Reference period*/
+  noline					 /*No line in t=-1*/
   accum                      /*Accumulate time in final lags and leads*/
   noend                      /*Don't plot end points with accum*/
   keepbal(varname)           /*Use only units balanced in all lags and leads*/
@@ -26,7 +27,7 @@ ci(string)                   /*Type of CI, rarea, rcap or rline*/
   wboot_op(string)           /*Options for boottest*/
   *                          /*Other regression options*/
   balanced                   /*Use a balanced panel in all lags/leads selected*/
-  inrange				     /*Show periods between lags and leads*/
+  inrange		     /*Show periods between lags and leads*/
   graph_op(string asis)      /*General graphing options: titles, subtitle, scheme, note, label */
   ci_op(string asis)         /*CI (rcap/rarea/line) graphing options*/
   coef_op(string)            /*Coef (scatter) graphing options*/
@@ -187,6 +188,11 @@ if strmatch(`"`ci_op'"', "*note*") + strmatch(`"`coef_op'"', "*note*") + strmatc
 
 if strmatch(`"`ci_op'"', "*leg*") + strmatch(`"`coef_op'"', "*leg*") + strmatch(`"`endpoints_op'"', "*leg*")>=1 {
     di as err "specify the general options for graph (eg titles, labels, legends, scheme) in {bf:graph_op()}" 
+    exit 198 
+}
+
+if strmatch(`"`wboot_op'"', "*level*") + strmatch(`"`wboot_op'"', "l(*")>=1 {
+    di as err "{bf:level()} option should only be specified in the main command syntax" 
     exit 198 
 }
 
@@ -385,6 +391,11 @@ qui matrix v=e(V)
 *--- (5) Generate point estimates and confidence intervals
 *-------------------------------------------------------------------------------
  
+local lev   = r(level)
+local alp   = (100-r(level))/100
+local critu = `alp'/2
+local critl = 1-`critu'
+ 
 foreach var in point uCI lCI {
     tempvar `var'
     qui gen ``var''=.
@@ -399,7 +410,7 @@ if `baseline'<0 {
             foreach t of numlist `t_2'(-1)1{
                 qui replace `point'=_b[lag`t'] in `i'
                 
-                cap qui boottest lag`t', nograph `wboot_op'
+                cap qui boottest lag`t', nograph `wboot_op' level(`lev')
                 cap mat ci_lag`t'= r(CI)
                 cap qui replace `lCI'  = ci_lag`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lag`t'[1,2] in `i'
@@ -411,7 +422,7 @@ if `baseline'<0 {
             foreach t of numlist `t_1'(-1)2{
                 qui replace `point'=_b[lag`t'] in `i'
                 
-                cap qui boottest lag`t', nograph `wboot_op'
+                cap qui boottest lag`t', nograph `wboot_op' level(`lev')
                 cap mat ci_lag`t'= r(CI)
                 cap qui replace `lCI'  = ci_lag`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lag`t'[1,2] in `i'
@@ -424,7 +435,7 @@ if `baseline'<0 {
             foreach t of numlist `t_1'(-1)`_blpost' `_blpre'(-1)1{
                 qui replace `point'=_b[lag`t'] in `i'
                 
-                cap qui boottest lag`t', nograph `wboot_op'
+                cap qui boottest lag`t', nograph `wboot_op' level(`lev')
                 cap mat ci_lag`t'= r(CI)
                 cap qui replace `lCI'  = ci_lag`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lag`t'[1,2] in `i'
@@ -437,21 +448,14 @@ if `baseline'<0 {
         foreach t of numlist 0(1)`max'{
             qui replace `point'=_b[lead`t'] in `i'
             
-            cap qui boottest lead`t', nograph `wboot_op'
+            cap qui boottest lead`t', nograph `wboot_op' level(`lev')
             cap mat ci_lead`t'= r(CI)
             cap qui replace `lCI'  = ci_lead`t'[1,1] in `i'
             cap qui replace `uCI'  = ci_lead`t'[1,2] in `i'
             local ++i
         }
-    local lev   = r(level)
-	
 	}
     else {
-	local lev   = r(level)
-	local alp   = (100-r(level))/100
-	local critu = `alp'/2
-	local critl = 1-`critu'
-	
         if `baseline'==`min' {
             local i = 2
             foreach t of numlist `t_2'(-1)1{
@@ -536,7 +540,7 @@ else if `baseline'>=0 {
         foreach t of numlist `t_1'(-1)1{
             qui replace `point'=_b[lag`t'] in `i'
             
-            cap qui boottest lag`t', nograph `wboot_op'
+            cap qui boottest lag`t', nograph `wboot_op' level(`lev')
             cap mat ci_lag`t'= r(CI)
             cap qui replace `lCI'  = ci_lag`t'[1,1] in `i'
             cap qui replace `uCI'  = ci_lag`t'[1,2] in `i'
@@ -546,7 +550,7 @@ else if `baseline'>=0 {
             foreach t of numlist 0(1)`t_3'{
                 qui replace `point'=_b[lead`t'] in `i'
                 
-                cap qui boottest lead`t', nograph `wboot_op'
+                cap qui boottest lead`t', nograph `wboot_op' level(`lev')
                 cap mat ci_lead`t'= r(CI)
                 cap qui replace `lCI'  = ci_lead`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lead`t'[1,2] in `i'
@@ -558,7 +562,7 @@ else if `baseline'>=0 {
             foreach t of numlist 1(1)`max'{
                 qui replace `point'=_b[lead`t'] in `i'
                 
-                cap qui boottest lead`t', nograph `wboot_op'
+                cap qui boottest lead`t', nograph `wboot_op' level(`lev')
                 cap mat ci_lead`t'= r(CI)
                 cap qui replace `lCI'  = ci_lead`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lead`t'[1,2] in `i'
@@ -569,7 +573,7 @@ else if `baseline'>=0 {
             foreach t of numlist 0(1)`_blpre' `_blpost'(1)`max'{
                 qui replace `point'=_b[lead`t'] in `i'
                 
-                cap qui boottest lead`t', nograph `wboot_op'
+                cap qui boottest lead`t', nograph `wboot_op' level(`lev')
                 cap mat ci_lead`t'= r(CI)
                 cap qui replace `lCI'  = ci_lead`t'[1,1] in `i'
                 cap qui replace `uCI'  = ci_lead`t'[1,2] in `i'
@@ -579,15 +583,8 @@ else if `baseline'>=0 {
                 }
             }
         }
-    local lev   = r(level)
-	
 	}
     else {
-	local lev   = r(level)
-	local alp   = (100-r(level))/100
-	local critu = `alp'/2
-	local critl = 1-`critu'
-	
         local i=1
         foreach t of numlist `t_1'(-1)1{
             qui replace `point'=_b[lag`t'] in `i'
@@ -700,6 +697,15 @@ qui replace `uCI'  =. if `col'==1 & `times'>`baseline'
 qui replace `times'=. if `col'==1 & `times'>`baseline'
 }
 
+if ("`line'"=="noline") == 0{
+  local xline_1 xline(-1, lcolor(black) lpattern(solid))
+}
+
+else{
+  local xline_1
+}
+
+
 if strmatch(`"`graph_op'"', "*leg*")==1 {
 
 if strmatch(`"`graph_op'"', "*xti*")==1 { 
@@ -729,7 +735,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 		yline(0, lcolor(red))
         || scatter `point' `times'   if `obs'>=`max2', 
         `coef_op'  
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         `graph_op';
         #delimit cr
     }
@@ -744,7 +750,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 			yline(0, lcolor(red))       
             || scatter `point' `times' if inrange(`times', -`lpoint', `upoint'), 
             `coef_op' 
-			xline(`baseline', lcolor(black) lpattern(solid))
+		    `xline_1'
             `graph_op';
             #delimit cr
         }
@@ -758,8 +764,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 			`coef_op'
             || scatter `point' `times' if `times'==-`lags' | `times'==`leads', 
 			`endpoints_op'
-            xline(`baseline', lcolor(black) lpattern(solid))
-            `graph_op';
+			`xline_1'
             #delimit cr
         }
     }
@@ -771,7 +776,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 		yline(0, lcolor(red))       
         || scatter `point' `times', 
         `coef_op'
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         `graph_op';
         #delimit cr
     }
@@ -783,7 +788,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 		yline(0, lcolor(red))       
         || scatter `point' `times' if inrange(`times', -`lags', `leads'), 
         `coef_op'
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         `graph_op';
         #delimit cr	
 		}
@@ -795,7 +800,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 		yline(0, lcolor(red))       
         || scatter `point' `times' if inrange(`times', `min', `max'), 
         `coef_op'
-		xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         `graph_op';
         #delimit cr
     }
@@ -828,7 +833,7 @@ else {
 		yline(0, lcolor(red))       
         || scatter `point' `times'   if `obs'>=`max2', 
         `coef_op'	   
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         `graph_op'
         xtitle("Time");
         #delimit cr
@@ -844,7 +849,7 @@ else {
 			yline(0, lcolor(red))       
             || scatter `point' `times' if inrange(`times', -`lpoint', `upoint'), 
             `coef_op' 
-			xline(`baseline', lcolor(black) lpattern(solid))
+			`xline_1'
             `graph_op'
             xtitle("Time");
            #delimit cr
@@ -859,7 +864,7 @@ else {
             `coef_op'
             || scatter `point' `times' if `times'==-`lags' | `times'==`leads', 
 			`endpoints_op'
-		    xline(`baseline', lcolor(black) lpattern(solid))
+			`xline_1'
             `graph_op'
             xtitle("Time");
             #delimit cr
@@ -873,7 +878,7 @@ else {
 		yline(0, lcolor(red))       
         || scatter `point' `times', 
         `coef_op'
-		xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         `graph_op'
         xtitle("Time");
         #delimit cr
@@ -886,7 +891,7 @@ else {
 		yline(0, lcolor(red))       
         || scatter `point' `times' if inrange(`times', -`lags', `leads'), 
         `coef_op'
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         `graph_op'
 		xtitle("Time");
         #delimit cr	
@@ -899,7 +904,7 @@ else {
 		yline(0, lcolor(red))       
         || scatter `point' `times' if inrange(`times', `min', `max'), 
         `coef_op'   
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         `graph_op'
         xtitle("Time");
         #delimit cr
@@ -937,7 +942,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 		yline(0, lcolor(red))
         || scatter `point' `times'   if `obs'>=`max2', 
         `coef_op'  
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         legend(order(2 "Point Estimate" 1 "`lev'% CI"))
 		`graph_op';
         #delimit cr
@@ -953,7 +958,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 			yline(0, lcolor(red))       
             || scatter `point' `times' if inrange(`times', -`lpoint', `upoint'), 
             `coef_op' 
-			xline(`baseline', lcolor(black) lpattern(solid))
+			`xline_1'
             legend(order(2 "Point Estimate" 1 "`lev'% CI"))
 			`graph_op';
             #delimit cr
@@ -968,7 +973,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 			`coef_op'
             || scatter `point' `times' if `times'==-`lags' | `times'==`leads', 
 			`endpoints_op'
-            xline(`baseline', lcolor(black) lpattern(solid))
+			`xline_1'
             legend(order(2 "Point Estimate" 1 "`lev'% CI"))
 			`graph_op';
             #delimit cr
@@ -982,7 +987,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 		yline(0, lcolor(red))       
         || scatter `point' `times', 
         `coef_op'
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         legend(order(2 "Point Estimate" 1 "`lev'% CI"))
 		`graph_op';
         #delimit cr
@@ -995,7 +1000,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 		yline(0, lcolor(red))       
         || scatter `point' `times' if inrange(`times', -`lags', `leads'), 
         `coef_op'
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         legend(order(2 "Point Estimate" 1 "`lev'% CI"))
 		`graph_op';
         #delimit cr	
@@ -1008,7 +1013,7 @@ if strmatch(`"`graph_op'"', "*xti*")==1 {
 		yline(0, lcolor(red))       
         || scatter `point' `times' if inrange(`times', `min', `max'), 
         `coef_op'
-		xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         legend(order(2 "Point Estimate" 1 "`lev'% CI"))
 		`graph_op';
         #delimit cr
@@ -1042,7 +1047,7 @@ else {
 		yline(0, lcolor(red))       
         || scatter `point' `times'   if `obs'>=`max2', 
         `coef_op'	   
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         legend(order(2 "Point Estimate" 1 "`lev'% CI"))
         xtitle("Time")
 		`graph_op';
@@ -1059,7 +1064,7 @@ else {
 			yline(0, lcolor(red))       
             || scatter `point' `times' if inrange(`times', -`lpoint', `upoint'), 
             `coef_op' 
-			xline(`baseline', lcolor(black) lpattern(solid))
+			`xline_1'
             legend(order(2 "Point Estimate" 1 "`lev'% CI"))
             xtitle("Time")
 			`graph_op';
@@ -1075,7 +1080,7 @@ else {
             `coef_op'
             || scatter `point' `times' if `times'==-`lags' | `times'==`leads', 
 			`endpoints_op'
-		    xline(`baseline', lcolor(black) lpattern(solid))
+			`xline_1'
             legend(order(2 "Point Estimate" 1 "`lev'% CI"))
             xtitle("Time")
 			`graph_op';
@@ -1090,7 +1095,7 @@ else {
 		yline(0, lcolor(red))       
         || scatter `point' `times', 
         `coef_op'
-		xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         legend(order(2 "Point Estimate" 1 "`lev'% CI"))
         xtitle("Time")
 		`graph_op';
@@ -1104,7 +1109,7 @@ else {
 		yline(0, lcolor(red))       
         || scatter `point' `times' if inrange(`times', -`lags', `leads'), 
         `coef_op'
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         legend(order(2 "Point Estimate" 1 "`lev'% CI"))
 		xtitle("Time")
 		`graph_op';
@@ -1118,7 +1123,7 @@ else {
 		yline(0, lcolor(red))       
         || scatter `point' `times' if inrange(`times', `min', `max'), 
         `coef_op'   
-        xline(`baseline', lcolor(black) lpattern(solid))
+		`xline_1'
         legend(order(2 "Point Estimate" 1 "`lev'% CI"))
         xtitle("Time")
 		`graph_op';

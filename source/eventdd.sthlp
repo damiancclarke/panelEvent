@@ -63,6 +63,8 @@ In the case of using the {help level} option, this should only be specified in t
 {p_end}
 {synopt:{opt inrange}}  Requests that only specified periods in lags and leads be shown in the plot.
 {p_end}
+{synopt:{opt noline}}  Requests that line at -1 on the x-axis is suppressed from graphs.
+{p_end}
 {synopt:{opt graph_op(string)}}  Specifies any general options in {help twoway_options} which should be passed to the resulting event study graph, (eg title, axis, labels, legends).
 {p_end}
 {synopt:{opt ci_op(string)}}  Specifies any options for confidence intervals indicated in {cmd:ci()}: {help twoway_rarea} for {cmd:rarea} (eg area), {help twoway_rcap} for {cmd:rcap} (eg line) or {help twoway_rline} for {cmd:rline} (eg connect) 
@@ -238,6 +240,11 @@ will be plotted, all units and time periods will be included in the estimation o
 {phang}
 {opt inrange}  Requests that only the specified lags and leads are plotted.  While only lags and leads indicated
 in {cmd: lags(#)} and {cmd:leads(#)} will be plotted, all units and time periods will be included in the estimation of the event study.
+
+{pstd}
+{p_end}
+{phang}
+{opt noline}  Requests that the line before the event on the x-axis is not shown on graphical output.
 
 {pstd}
 {p_end}
