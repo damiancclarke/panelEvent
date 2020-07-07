@@ -15,7 +15,7 @@ timevar(varname)             /*Standardized time variable*/
 ci(string)                   /*Type of CI, rarea, rcap or rline*/
   [
   baseline(integer -1)       /*Reference period*/
-  noline					 /*No line in t=-1*/
+  noline		     /*No line in t=-1*/
   accum                      /*Accumulate time in final lags and leads*/
   noend                      /*Don't plot end points with accum*/
   keepbal(varname)           /*Use only units balanced in all lags and leads*/
